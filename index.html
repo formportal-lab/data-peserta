@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<title>Data Peserta HDS</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<style>
+body{background:#e8efe9;}
+.navbar{border-radius:0 0 18px 18px;}
+.card{border-radius:18px;}
+.profile{
+  width:80px;height:80px;border-radius:50%;
+  object-fit:cover;border:3px solid cyan;cursor:pointer;
+}
+@media(min-width:768px){
+  .profile{width:110px;height:110px}
+}
+</style>
+</head>
+<body>
+
+<!-- NAVBAR -->
+<nav class="navbar navbar-dark bg-dark px-3">
+  <span class="navbar-brand">DATA PESERTA HDS</span>
+  <div class="d-flex gap-2">
+    <a href="form.html" class="btn btn-sm btn-outline-light">➕ Daftar</a>
+    <button class="btn btn-sm btn-danger" id="adminBtn">Admin</button>
+  </div>
+</nav>
+
+<div class="container py-3">
+
+  <!-- KAMPUNG -->
+  <div id="kampungContainer"></div>
+
+  <!-- DETAIL PESERTA -->
+  <div id="detailPeserta"></div>
+
+  <!-- ADMIN PANEL -->
+  <div id="adminPanel"></div>
+
+</div>
+
+<!-- ADMIN LOGIN -->
+<div id="adminLogin" class="card p-3"
+style="display:none;position:fixed;bottom:20px;right:20px;width:260px;">
+  <input id="adminUser" class="form-control mb-2" placeholder="Admin ID">
+  <input id="adminPass" class="form-control mb-2" type="password" placeholder="Password">
+  <button class="btn btn-danger w-100" id="loginAdmin">LOGIN ADMIN</button>
+</div>
+
+<!-- MODAL LOGIN PESERTA -->
+<div class="modal fade" id="loginModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content rounded-4">
+      <div class="modal-header">
+        <h5 class="modal-title">🔐 Login Peserta</h5>
+        <button class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input id="loginUser" class="form-control mb-2" disabled>
+        <input id="loginPass" type="password" class="form-control mb-2"
+          placeholder="Masukkan Password">
+        <button class="btn btn-success w-100" id="btnLogin">LOGIN</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL EDIT DATA -->
+<div class="modal fade" id="editModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content rounded-4">
+      <div class="modal-header">
+        <h5 class="modal-title">✏️ Edit Data Peserta</h5>
+        <button class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input id="editNama" class="form-control mb-2" placeholder="Nama">
+        <input id="editEmail" class="form-control mb-2" placeholder="Email">
+        <input id="editTelp" class="form-control mb-2" placeholder="No Telp">
+        <textarea id="editAlasan" class="form-control mb-2" placeholder="Alasan"></textarea>
+        <button class="btn btn-warning w-100" id="saveEdit">💾 Simpan Perubahan</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL UBAH PASSWORD -->
+<div class="modal fade" id="passModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content rounded-4">
+      <div class="modal-header">
+        <h5 class="modal-title">🔑 Ubah Password</h5>
+        <button class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input id="oldPass" type="password" class="form-control mb-2" placeholder="Password Lama">
+        <input id="newPass" type="password" class="form-control mb-2" placeholder="Password Baru">
+        <button class="btn btn-danger w-100" id="savePass">🔐 Simpan Password</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- FIREBASE -->
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+/* ================= FIREBASE ================= */
+firebase.initializeApp({
+ apiKey: "AIzaSyBO1aP-TRHwbM1fDj-rvalwZBcjBDG1UEU",
+ authDomain: "formdatahds.firebaseapp.com",
+ projectId: "formdatahds",
+ storageBucket: "formdatahds.firebasestorage.app",
+ messagingSenderId: "932072482968",
+ appId: "1:932072482968:web:04627434d42966d6ec88ed"
+});
+const db = firebase.database();
+
+/* ================= DATA ================= */
+const DAFTAR_KAMPUNG = [
+ "SEKONAU","CUKA HILIR","SEGIAM HULU","KAKI RIAM","MORAN","ODONG",
+ "KUNSIT","NANGA BIABAN","BANDAN","GEDET","KIATAK","BAU","LANDAS"
+];
+
+const kampungContainer = document.getElementById("kampungContainer");
+const loginModal = new bootstrap.Modal(document.getElementById("loginModal"));
+const editModal = new bootstrap.Modal(document.getElementById("editModal"));
+const passModal = new bootstrap.Modal(document.getElementById("passModal"));
+
+let currentUser;
+
+/* ================= CARD KAMPUNG ================= */
+DAFTAR_KAMPUNG.forEach(k => {
+  const id = k.replace(/\s/g,"_");
+  kampungContainer.innerHTML += `
+    <div class="card p-3 mb-3">
+      <h5 class="text-center mb-3">🏘️ ${k}</h5>
+      <div class="d-flex flex-wrap gap-2 justify-content-center" id="list_${id}"></div>
+    </div>`;
+});
+
+/* ================= LOAD PESERTA ================= */
+db.ref("anggota").once("value", snap => {
+  snap.forEach(child => {
+    const d = child.val();
+    if(!DAFTAR_KAMPUNG.includes(d.asal)) return;
+
+    const list = document.getElementById("list_" + d.asal.replace(/\s/g,"_"));
+    const img = document.createElement("img");
+    img.src = d.foto;
+    img.className = "profile";
+    img.title = d.nama;
+    img.onclick = () => showLogin(child.key);
+    list.appendChild(img);
+  });
+});
+
+/* ================= LOGIN PESERTA ================= */
+function showLogin(uid){
+  currentUser = uid;
+  document.getElementById("loginUser").value = uid;
+  document.getElementById("loginPass").value = "";
+  loginModal.show();
+}
+
+document.getElementById("btnLogin").onclick = () => {
+  db.ref("credential/"+currentUser).once("value", s => {
+    if(!s.exists() || s.val().password !== document.getElementById("loginPass").value){
+      alert("❌ Password salah"); return;
+    }
+
+    db.ref("anggota/"+currentUser).once("value", u => {
+      const d = u.val();
+      document.getElementById("detailPeserta").innerHTML = `
+      <div class="card p-3 mt-3">
+        <div class="d-flex gap-3 align-items-center">
+          <img src="${d.foto}" class="profile">
+          <div class="flex-grow-1">
+            <h5>${d.nama}</h5>
+            <p class="text-muted mb-2">${d.bagian || ""}</p>
+            <div class="d-flex gap-2">
+              <button class="btn btn-sm btn-warning" onclick="openEdit('${currentUser}')">✏️ Edit</button>
+              <button class="btn btn-sm btn-danger" onclick="openPass()">🔑 Password</button>
+            </div>
+          </div>
+        </div>
+        <hr>
+        <p><b>Email:</b> ${d.email}</p>
+        <p><b>No Telp:</b> ${d.telp}</p>
+        <p><b>Asal OMK:</b> ${d.asal}</p>
+        <p><b>Tanggal:</b> ${d.tanggal}</p>
+        <p><b>Alasan:</b> ${d.alasan}</p>
+        <p><b>Motivasi:</b> ${d.motivasi}</p>
+        <p><b>Minat:</b> ${d.minat}</p>
+        <p><b>Harapan:</b> ${d.harapan}</p>
+      </div>`;
+      loginModal.hide();
+    });
+  });
+};
+
+/* ================= EDIT DATA ================= */
+function openEdit(uid){
+  db.ref("anggota/"+uid).once("value", s=>{
+    const d=s.val();
+    document.getElementById("editNama").value=d.nama;
+    document.getElementById("editEmail").value=d.email;
+    document.getElementById("editTelp").value=d.telp;
+    document.getElementById("editAlasan").value=d.alasan;
+    editModal.show();
+  });
+}
+document.getElementById("saveEdit").onclick=()=>{
+  db.ref("anggota/"+currentUser).update({
+    nama:document.getElementById("editNama").value,
+    email:document.getElementById("editEmail").value,
+    telp:document.getElementById("editTelp").value,
+    alasan:document.getElementById("editAlasan").value
+  },()=>{alert("✅ Data berhasil diperbarui"); editModal.hide(); location.reload();});
+};
+
+/* ================= UBAH PASSWORD ================= */
+function openPass(){
+  document.getElementById("oldPass").value="";
+  document.getElementById("newPass").value="";
+  passModal.show();
+}
+document.getElementById("savePass").onclick=()=>{
+  db.ref("credential/"+currentUser).once("value", s=>{
+    if(s.val().password!==document.getElementById("oldPass").value){
+      alert("❌ Password lama salah"); return;
+    }
+    db.ref("credential/"+currentUser).update({
+      password:document.getElementById("newPass").value
+    },()=>{alert("🔐 Password berhasil diubah"); passModal.hide();});
+  });
+};
+
+/* ================= ADMIN ================= */
+document.getElementById("adminBtn").onclick = () => {
+  const adminDiv = document.getElementById("adminLogin");
+  adminDiv.style.display = adminDiv.style.display==="block"?"none":"block";
+};
+document.getElementById("loginAdmin").onclick = () => {
+  if(document.getElementById("adminUser").value!=="admin" || document.getElementById("adminPass").value!=="admin123"){
+    alert("Login admin gagal"); return;
+  }
+  window.open("admin.html","_blank");
+};
+</script>
+</body>
+</html>
