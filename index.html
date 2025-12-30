@@ -24,8 +24,8 @@ body{background:#e8efe9;}
 <nav class="navbar navbar-dark bg-dark px-3">
   <span class="navbar-brand">DATA PESERTA HDS</span>
   <div class="d-flex gap-2">
-    <a href="form.html" class="btn btn-sm btn-outline-light">➕ Daftar</a>
-    <button class="btn btn-sm btn-danger" id="adminBtn">Admin</button>
+    <a href="https://formportal-lab.github.io/formportal/" class="btn btn-sm btn-outline-light" target="_blank" rel="noopener noreferrer"> Daftar</a>
+    <a href="https://formportal-lab.github.io/khusus-admin/" class="btn btn-sm btn-outline-light" target="_blank" rel="noopener noreferrer">Admin</a>
   </div>
 </nav>
 
@@ -250,7 +250,7 @@ document.getElementById("loginAdmin").onclick = () => {
   if(document.getElementById("adminUser").value!=="admin" || document.getElementById("adminPass").value!=="admin123"){
     alert("Login admin gagal"); return;
   }
-  window.open("admin.html","_blank");
+  window.open("https://formportal-lab.github.io/khusus-admin/","_blank");
 };
 </script>
 </body>
